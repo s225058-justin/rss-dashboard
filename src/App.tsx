@@ -1,5 +1,5 @@
-import { useState } from 'react'
 import RSSFeedDashboard from './components/dashboard.tsx'
+import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css'
 
 function App() {

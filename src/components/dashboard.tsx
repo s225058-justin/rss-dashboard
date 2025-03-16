@@ -1,124 +1,167 @@
-import { useState, useEffect } from 'react';
-import { RSSExtractor, Feed, FeedItem } from './rss-extractor';
+import { useState, useEffect } from "react";
+import { RSSExtractor, Feed } from "./rss-extractor";
+import "bootstrap/dist/css/bootstrap.min.css";
+import "bootstrap-icons/font/bootstrap-icons.css";
 
 const RSSFeedDashboard = () => {
-  const [feedUrl, setFeedUrl] = useState('');
+  const DEFAULT_FEEDS = [
+    "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
+    "https://feeds.theguardian.com/theguardian/world/rss",
+    "https://engineering.fb.com/feed/",
+    "https://blog.cloudflare.com/rss/",
+    "https://stackoverflow.blog/feed/",
+  ];
+  const [feedUrl, setFeedUrl] = useState("");
   const [feeds, setFeeds] = useState<Feed[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [currentFeed, setCurrentFeed] = useState<Feed | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
   const extractor = new RSSExtractor();
-  
+
   const addFeed = async () => {
     if (!feedUrl) return;
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
       const feed = await extractor.fetchFeed(feedUrl);
-      setFeeds(prev => [...prev, feed]);
+      setFeeds((prev) => [...prev, feed]);
       setCurrentFeed(feed);
-      setFeedUrl('');
+      setFeedUrl("");
     } catch (err) {
-      setError(`Failed to fetch feed: ${err instanceof Error ? err.message : String(err)}`);
+      setError(`Failed to fetch feed: Perhaps your RSS link is invalid?`);
     } finally {
       setLoading(false);
     }
   };
-  
-  const formatDate = (date?: Date) => {
-    return date ? date.toLocaleDateString() : 'Unknown date';
-  };
-  
+
+  useEffect(() => {
+    const initializeFeeds = async () => {
+      for (const defaultFeed of DEFAULT_FEEDS) {
+        try {
+          const feed = await extractor.fetchFeed(defaultFeed);
+          setFeeds((prev) => [...prev, feed]);
+        } catch (e) {
+          console.error(`Failed to add default feed ${defaultFeed}:`, e);
+        }
+      }
+    };
+
+    initializeFeeds();
+  }, []);
+
   return (
-    <div className="max-w-6xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-6">RSS Feed Dashboard</h1>
-      
-      {/* Feed Input */}
-      <div className="flex mb-6">
-        <input
-          type="text"
-          value={feedUrl}
-          onChange={(e) => setFeedUrl(e.target.value)}
-          placeholder="Enter RSS feed URL"
-          className="flex-1 p-2 border rounded-l"
-        />
-        <button
-          onClick={addFeed}
-          disabled={loading || !feedUrl}
-          className="bg-blue-500 text-white px-4 py-2 rounded-r disabled:bg-gray-300"
-        >
-          {loading ? 'Loading...' : 'Add Feed'}
-        </button>
-      </div>
-      
-      {error && (
-        <div className="bg-red-100 text-red-700 p-3 rounded mb-4">
-          {error}
-        </div>
-      )}
-      
-      {/* Feed List */}
-<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-  {/* Sidebar */}
-  <div className="md:col-span-1 bg-gray-100 p-4 rounded">
-    <h2 className="font-bold mb-2">My Feeds</h2>
-    {feeds.length === 0 ? (
-      <p className="text-gray-500">No feeds added yet</p>
-    ) : (
-      <>
-        {feeds.map((feed, i) => (
-          <div key={i} className="md:col-span-3 flex justify-center items-center min-h-screen">
-
-            {/* Feed Content */}
-            <div className="bg-white p-4 rounded shadow mb-4 w-full max-w-lg mx-auto">
-              <div style={{ display: 'flex', alignItems: 'center' }}>
+    <div className="container-fluid p-0 vh-100 d-flex">
+      <div
+        className="col-2 bg-light p-4 border-end overflow-auto"
+        style={{ height: "100vh" }}
+      >
+        <h2 className="h4 fw-bold mb-4">My Feeds</h2>
+        {feeds.length === 0 ? (
+          <p className="text-muted">No feeds added yet</p>
+        ) : (
+          feeds.map((feed, index) => (
+            <div key={index} className="d-flex mb-2">
               <button
-              onClick={() => setCurrentFeed(feed)}
-              className={`block w-full text-left p-2 rounded ${
-                currentFeed === feed ? 'bg-blue-100' : 'hover:bg-gray-200'
-              }`}
-            >
-              {feed.title || 'Untitled Feed'}
-            </button>
-                <input
-                  type="number"
-                  value={feed.articles}
-                  onChange={(e) => {
-                    const updatedFeeds = [...feeds];
-                    updatedFeeds[i] = { ...updatedFeeds[i], articles: Number(e.target.value) };
-                    setFeeds(updatedFeeds);
-                  }}
-                  className="border rounded p-2"
-                  style={{ width: '40px' }}
-                />
-
-              {/* Display Feed Items */}
-              {feed.items.slice(0, feed.articles).map((item, j) => (
-                <div key={j} className="bg-white p-4 rounded shadow mb-4">
-                  <h4 className="font-bold">
-                    <a
-                      href={item.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline"
-                    >
-                      {item.title}
-                    </a>
-                  </h4>
-                </div>
-              ))}
+                className={`btn ${
+                  currentFeed === feed ? "btn-primary" : "btn-outline-primary"
+                } flex-grow-1 text-start text-truncate me-1`}
+                onClick={() => setCurrentFeed(feed)}
+              >
+                {feed.title || "Untitled Feed"}
+              </button>
+              <button
+                className="btn btn-outline-danger"
+                onClick={() => {
+                  setFeeds(feeds.filter((_, i) => i !== index));
+                  if (currentFeed === feed) setCurrentFeed(null);
+                }}
+              >
+                <i className="bi bi-trash"></i>
+              </button>
             </div>
+          ))
+        )}
+      </div>
+
+      <div className="col-10 d-flex flex-column" style={{ height: "100vh" }}>
+        <div
+          className="p-4 bg-light border-bottom d-flex flex-column justify-content-center"
+          style={{ height: "20%" }}
+        >
+          <h1 className="h2 fw-bold mb-4">RSS Feed Dashboard</h1>
+          <div className="input-group">
+            <input
+              type="text"
+              value={feedUrl}
+              onChange={(e) => setFeedUrl(e.target.value)}
+              placeholder="Enter RSS feed URL"
+              className="form-control"
+            />
+            <button
+              onClick={addFeed}
+              disabled={loading || !feedUrl}
+              className="btn btn-primary"
+            >
+              {loading ? "Loading..." : "Add Feed"}
+            </button>
           </div>
-          </div>
-        ))}
-      </>
-    )}
-  </div>
-</div>
-</div>
+          {error && (
+            <div className="alert alert-danger" role="alert">
+              {error}
+            </div>
+          )}
+        </div>
+        <div className="p-4 overflow-auto" style={{ height: "80%" }}>
+          {currentFeed ? (
+            currentFeed.items.map((item, i) => (
+              <div
+                key={i}
+                className="mb-4 border"
+                style={{ padding: "10px", borderRadius: "4px" }}
+              >
+                <div
+                  className={`row align-items-center ${
+                    item.description && item.description.trim() !== ""
+                      ? "border-bottom"
+                      : ""
+                  } pb-2 mb-2`}
+                >
+                  {/* Title Column */}
+                  <div className="col-9">
+                    <h4 className="fw-bold mb-0">
+                      <a
+                        href={item.link}
+                        className="text-primary text-decoration-none"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {item.title}
+                      </a>
+                    </h4>
+                  </div>
+
+                  <div className="col-3 text-end">
+                    <p className="fw-light mb-0">
+                      {item.author},{" "}
+                      {item.publishDate
+                        ? item.publishDate.toLocaleDateString()
+                        : "No Date Available"}
+                    </p>
+                  </div>
+                </div>
+                {item.description && item.description.trim() !== "" && (
+                  <p className="fw-normal">{item.description}</p>
+                )}
+              </div>
+            ))
+          ) : (
+            <p className="text-muted">Select a feed from the sidebar</p>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };
 
