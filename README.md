@@ -1,4 +1,6 @@
 # rss-dashboard
+This was a simple take-home coding assignment that I completed as part of the internship process for Pakar Technology Malaysia in 2025.
+
 To run the preview, run the following command after cloning the repository.
 
 ``` npm run start-all ```
